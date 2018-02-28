@@ -1,6 +1,7 @@
 package framework.com.hwmtest;
 
 import android.os.Bundle;
+import android.os.PersistableBundle;
 import android.support.design.widget.FloatingActionButton;
 import android.support.design.widget.Snackbar;
 import android.support.v7.app.AppCompatActivity;
@@ -56,38 +57,85 @@ public class MainActivity extends AppCompatActivity {
                         .setAction("Action", null).show();
             }
         });
+
+    }
+
+    @Override
+    public void onSaveInstanceState(Bundle outState, PersistableBundle outPersistentState) {
+        super.onSaveInstanceState(outState, outPersistentState);
+        Log.d(TAG, EXT +"-----------------------------onSaveInstanceState");
+    }
+
+    private void prepareHWM() {
+        Log.d(TAG, EXT +"-----------------------------prepareHWM");
         mCallback = new TestCallback();
         mHWMessenger = getBinderProxy();
         try {
-            mHWMessenger.registerCallback(mCallback) ;
+            mHWMessenger.registerCallback(mCallback);
 
-        IHWControllerClient client = mHWMessenger.createHWControllerClient();
-        if (client == null) {
-            Log.d(TAG,EXT + "binder is null ");
-            return ;
-        }
-        String result = client.readSysfs(new String("/sys/class/graphics/fb0/mod"));
-        Log.d(TAG,EXT + "result: " + result);
-        result = client.readSysfs(new String("/sys/class/graphics/fb0/modes"));
-        Log.d(TAG,EXT + "result: " + result);
+            IHWControllerClient client = mHWMessenger.createHWControllerClient();
+            if (client == null) {
+                Log.d(TAG, EXT + "binder is null ");
+                return;
+            }
+            String result = client.readSysfs(new String("/sys/class/graphics/fb0/mod"));
+            Log.d(TAG, EXT + "result: " + result);
+            result = client.readSysfs(new String("/sys/class/graphics/fb0/modes"));
+            Log.d(TAG, EXT + "result: " + result);
 
-        result = client.writeSysfs(new String("/sys/class/leds/red/brightness"), new String("0"));
-        Log.d(TAG,EXT + ": led brightness : " + result);
-        result = client.writeSysfs(new String("/sys/class/leds/red/brightness"), new String("1"));
-        Log.d(TAG,EXT + ": led brightness : " + result);
+            result = client.writeSysfs(new String("/sys/class/leds/red/brightness"), new String("0"));
+            Log.d(TAG, EXT + ": led brightness : " + result);
+            result = client.writeSysfs(new String("/sys/class/leds/red/brightness"), new String("1"));
+            Log.d(TAG, EXT + ": led brightness : " + result);
 
 
-        result= client.getProperty(new String("sys.hw.test"));
-        Log.d(TAG,EXT + ": getProp [sys.hw.test] : " + result);
+            //result= client.getProperty(new String("ro.build.version.sdk"));
+            result = System.getProperty("ro.build.version.sdk");
+            Log.d(TAG, EXT + ": getProp [ro.build.version.sdk] : " + result);
 
-        result= client.setProperty(new String("sys.hw.test"), new String("debug"));
-        Log.d(TAG,EXT + ": getProp [sys.hw.test] : " + result);
-        result= client.setProperty(new String("sys.hw.test"), new String("normal"));
-        Log.d(TAG,EXT + ": getProp [sys.hw.test] : " + result);
+            result = client.setProperty(new String("sys.hw.test"), new String("debug"));
+            Log.d(TAG, EXT + ": getProp [sys.hw.test] : " + result);
+            result = client.setProperty(new String("sys.hw.test"), new String("normal"));
+            Log.d(TAG, EXT + ": getProp [sys.hw.test] : " + result);
         } catch (RemoteException e) {
             e.printStackTrace();
         }
+    }
+    @Override
+    protected void onResume(){
+        super.onResume();
+        prepareHWM();
+    }
+    @Override
+    protected void onPause(){
+        releaseHWM();
+        super.onPause();
+    }
+    @Override
+    protected void onStart() {
+        Log.d(TAG, EXT + ">>>>>>>>>>>>>>>>>>>>>>>>>>started");
+        super.onStart();
+    }
 
+    @Override
+    protected void onStop() {
+        Log.d(TAG, EXT + "<<<<<<<<<<<<<<<<<<<<<<<<<<stopped");
+        super.onStop();
+    }
+
+    private void releaseHWM() {
+        try {
+            mHWMessenger.unregisterCallback(mCallback);
+            Log.d(TAG,EXT + "******************unresgister callback complete");
+        } catch (RemoteException e) {
+            e.printStackTrace();
+        }
+    }
+
+    @Override
+    protected void onDestroy() {
+        Log.d(TAG, EXT + "+++++++++++++++++++++++++++destroyed");
+        super.onDestroy();
     }
     private class TestCallback extends IHWMessengerCallback.Stub
     {
